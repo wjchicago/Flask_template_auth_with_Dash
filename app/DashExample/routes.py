@@ -1,4 +1,4 @@
-from . import blueprint
+from app.DashExample import blueprint
 from flask import render_template
 from flask_login import login_required
 from Dashboard import Dash_App1, Dash_App2

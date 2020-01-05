@@ -1,6 +1,6 @@
 from flask_migrate import Migrate
 from configs.config import config_dict
-from app import create_app, db
+from app import create_app, db, socketio
 import os
 import sys
 
@@ -15,4 +15,5 @@ app = create_app(config_mode)
 Migrate(app, db)
 
 if __name__ == "__main__":
-    app.run(debug = True)
+    socketio.run(app)
+    app.run(debug=True)

@@ -1,25 +1,26 @@
 from flask import Flask, url_for
 from flask_login import current_user
-from .extensions import db, login_manager
+from app.extensions import db, login_manager, socketio
 from importlib import import_module
-from .base.models import User
+from app.base.models import User
 from Dashboard import Dash_App1, Dash_App2
 from os import path
 import logging
 
+
 def register_extensions(app):
     db.init_app(app)
     login_manager.init_app(app)
+    socketio.init_app(app)
 
 
 def register_blueprints(app):
-    for module_name in ('base', 'home', 'DashExample', 'setting'):
+    for module_name in ('base', 'home', 'DashExample', 'setting', 'quote'):
         module = import_module('app.{}.routes'.format(module_name))
         app.register_blueprint(module.blueprint)
 
 
 def configure_database(app):
-
     @app.before_first_request
     def initialize_database():
         db.create_all()
@@ -32,6 +33,7 @@ def configure_database(app):
     def shutdown_session(exception=None):
         db.session.remove()
 
+
 def configure_logs(app):
     # for combine gunicorn logging and flask built-in logging module
     if __name__ != "__main__":
@@ -39,6 +41,7 @@ def configure_logs(app):
         app.logger.handlers = gunicorn_logger.handlers
         app.logger.setLevel(gunicorn_logger.level)
     # endif
+
 
 def apply_themes(app):
     """
@@ -55,16 +58,17 @@ def apply_themes(app):
       the url will not be modified and the file is expected to be
       in the default /static/ location
     """
+
     @app.context_processor
     def override_url_for():
         Is_admin = current_user.is_authenticated and current_user.username == app.config['ADMIN']['username']
-        return dict(url_for = _generate_url_for_theme,
-                    Is_admin = Is_admin )
+        return dict(url_for=_generate_url_for_theme,
+                    Is_admin=Is_admin)
 
     def _generate_url_for_theme(endpoint, **values):
         if endpoint.endswith('static'):
             themename = values.get('theme', None) or \
-                app.config.get('DEFAULT_THEME', None)
+                        app.config.get('DEFAULT_THEME', None)
             if themename:
                 theme_file = "{}/{}".format(themename, values.get('filename', ''))
                 if path.isfile(path.join(app.static_folder, theme_file)):

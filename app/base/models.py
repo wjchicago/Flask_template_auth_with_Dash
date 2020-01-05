@@ -1,12 +1,19 @@
 from bcrypt import gensalt, hashpw, checkpw
 from flask_login import UserMixin
-from sqlalchemy import Binary, Column, Integer, String
+from sqlalchemy import Binary, Column, Integer, String, Float
 
 from app import db, login_manager
 
 
-class User(db.Model, UserMixin):
+class Quote(db.Model):
+    __tablename__ = 'Quote'
 
+    id = Column(Integer, primary_key=True)
+    label = Column(String)
+    pv = Column(Float)
+
+
+class User(db.Model, UserMixin):
     __tablename__ = 'User'
 
     id = Column(Integer, primary_key=True)

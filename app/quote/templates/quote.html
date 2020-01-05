@@ -1,0 +1,148 @@
+{% extends "base_site.html" %}
+
+{% block title %} Quote {% endblock title %}
+
+{% block stylesheets %}
+    {{ super() }}
+    {#    <link rel="stylesheet" href="https://unpkg.com/ag-grid-community/dist/styles/ag-grid.css">#}
+    {#    <link rel="stylesheet" href="https://unpkg.com/ag-grid-community/dist/styles/ag-theme-balham.css">#}
+    <script src='https://unpkg.com/@ag-grid-community/all-modules@22.1.1/dist/ag-grid-community.min.js'></script>
+    {#    <script src="https://unpkg.com/ag-grid-enterprise/dist/ag-grid-enterprise.min.noStyle.js"></script>#}
+    <script src="//code.jquery.com/jquery-1.12.4.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ="
+            crossorigin="anonymous"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"
+            integrity="sha256-yr4fRk/GU1ehYJPAs8P4JlTgu0Hdsp4ZKrx8bDEDC3I=" crossorigin="anonymous"></script>
+{% endblock stylesheets %}
+
+{% block content %}
+    <div class="right_col" role="main">
+
+        <div>
+            <div class="x_panel tile fixed_height_320">
+                <div class="x_title">
+                    <h2><small>Quote Menu</small></h2>
+                    <ul class="nav navbar-right panel_toolbox">
+                        <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+                        </li>
+                        <li class="dropdown">
+                            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button"
+                               aria-expanded="false"><i class="fa fa-wrench"></i></a>
+                            <ul class="dropdown-menu" role="menu">
+                                <li><a href="#">Settings 1</a>
+                                </li>
+                                <li><a href="#">Settings 2</a>
+                                </li>
+                            </ul>
+                        </li>
+                        <li><a class="close-link"><i class="fa fa-close"></i></a>
+                        </li>
+                    </ul>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="x_content">
+                    <form id="emit" method="POST" action='#'>
+                        <input type="text" name="make" id="emit_make" placeholder="Make">
+                        <input type="text" name="model" id="emit_model" placeholder="Model">
+                        <input type="submit" value="Add">
+                    </form>
+                    <br>
+                    <button onclick="getSelectedRows()">Update</button>
+                    <br>
+                    <button onclick="startSubscribe()">Start</button>
+                    <button onclick="stopSubscribe()">Stop</button>
+                    <div id="log"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="fixed_height_390">
+            <div id="myGrid" style="height: 100%;width:100%;" class="ag-theme-balham"></div>
+            <script type="text/javascript" charset="utf-8">
+                namespace = '/quote';
+                var socket = io(namespace);
+
+                // specify the columns
+                var columnDefs = [
+                    {headerName: "ID", field: "id", checkboxSelection: true},
+                    {headerName: "Make", field: "make"},
+                    {headerName: "Model", field: "model"},
+                    {headerName: "Price", field: "price"}
+                ];
+
+                // let the grid know which columns to use
+                var gridOptions = {
+                    columnDefs: columnDefs,
+                    getRowNodeId: function (data) {
+                        return data.id;
+                    },
+                };
+
+                // lookup the container we want the Grid to use
+                var eGridDiv = document.querySelector('#myGrid');
+
+                // after page is loaded, create the grid.
+                document.addEventListener("DOMContentLoaded", function () {
+                    // create the grid passing in the div to use together with the columns & data we want to use
+                    new agGrid.Grid(eGridDiv, gridOptions);
+
+                    // populate init data - from sever
+                    var url = location.origin + '/quote/init_grid'
+                    fetch(url).then(function (response) {
+                        return response.json();
+                    }).then(function (data) {
+                        gridOptions.api.setRowData(data);
+                    });
+                });
+
+                function getSelectedRows() {
+                    var selectedNodes = gridOptions.api.getSelectedNodes()
+                    var selectedData = selectedNodes.map(function (node) {
+                        return node.data
+                    })
+                    socket.emit('quote_update_event', {data: selectedData[0]})
+                }
+
+                function startSubscribe() {
+                    socket.emit('start_subscribe')
+                }
+
+                function stopSubscribe() {
+                    socket.emit('stop_subscribe')
+                }
+
+                $(document).ready(function () {
+
+                    socket.on('quote_calc_event', function (msg) {
+                        $('#log').append('<br>' + $('<div/>').text('Received #' + msg.count + ': ' + msg.info + ' data:' + JSON.stringify(msg.data)).html());
+                        try {
+                            // update or add a row
+                            var rowNode = gridOptions.api.getRowNode(msg.data.id);
+                            if (rowNode != undefined)
+                                rowNode.setData(msg.data);
+                            else
+                                gridOptions.api.updateRowData({add: [msg.data]});
+                        } catch (err) {
+                            console.log(err.message);
+                        }
+                    });
+
+                    $('form#emit').submit(function (event) {
+                        socket.emit('quote_update_event', {
+                            data: {
+                                'make': $('#emit_make').val(),
+                                'model': $('#emit_model').val()
+                            }
+                        });
+                        return false;
+                    });
+                });
+
+            </script>
+        </div>
+    </div>
+
+{% endblock content %}
+
+{% block javascripts %}
+    {{ super() }}
+{% endblock javascripts %}
